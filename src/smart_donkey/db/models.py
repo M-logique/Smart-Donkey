@@ -1,0 +1,103 @@
+from enum import Enum as PyEnum
+from typing import Tuple
+
+from sqlalchemy import (TIMESTAMP, Boolean, Enum, ForeignKey, Integer, Text,
+                        UniqueConstraint, func)
+from sqlalchemy.ext.asyncio import AsyncAttrs
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+__all__: Tuple[str, ...] = (
+    "Base",
+    "Message",
+    "Config",
+    "Accessed",
+    "User",
+    "Chat",
+    "AccessType",
+)
+
+
+class Base(AsyncAttrs, DeclarativeBase):
+    pass
+
+
+class AccessType(PyEnum):
+    CHAT_ONLY = 0
+    GLOBAL = 1
+    USER_IN_CHAT = 2
+    ALL = 3
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    _id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    message_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    author_id: Mapped[int] = mapped_column(
+        ForeignKey("users._id", ondelete="CASCADE"), nullable=False
+    )
+    chat_id: Mapped[int] = mapped_column(
+        ForeignKey("chats._id", ondelete="CASCADE"), nullable=False
+    )
+    created_at: Mapped["TIMESTAMP"] = mapped_column(
+        TIMESTAMP, server_default=func.now()
+    )
+    role: Mapped[str] = mapped_column(Text, nullable=False)
+    file_hash: Mapped[str] = mapped_column(Text, nullable=True)
+
+
+class Config(Base):
+    __tablename__ = "config"
+    __table_args__ = (UniqueConstraint("chat_id"),)
+
+    _id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chat_id: Mapped[int] = mapped_column(
+        ForeignKey("chats._id", ondelete="CASCADE"), nullable=False
+    )
+    model: Mapped[str] = mapped_column(Text, nullable=False)
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    instructions: Mapped[str] = mapped_column(Text, nullable=True)
+    streaming: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped["TIMESTAMP"] = mapped_column(
+        TIMESTAMP, server_default=func.now()
+    )
+
+
+class Accessed(Base):
+    __tablename__ = "accessed"
+    __table_args__ = (UniqueConstraint("chat_id", "user_id"),)
+
+    _id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chat_id: Mapped[int] = mapped_column(
+        ForeignKey("chats._id", ondelete="CASCADE"), nullable=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users._id", ondelete="CASCADE"), nullable=True
+    )
+    access_type: Mapped[AccessType] = mapped_column(
+        Enum(AccessType), nullable=False, default=AccessType.CHAT_ONLY
+    )
+    created_at: Mapped["TIMESTAMP"] = mapped_column(
+        TIMESTAMP, server_default=func.now()
+    )
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    _id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    created_at: Mapped["TIMESTAMP"] = mapped_column(
+        TIMESTAMP, server_default=func.now()
+    )
+
+
+class Chat(Base):
+    __tablename__ = "chats"
+
+    _id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chat_id: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    created_at: Mapped["TIMESTAMP"] = mapped_column(
+        TIMESTAMP, server_default=func.now()
+    )
