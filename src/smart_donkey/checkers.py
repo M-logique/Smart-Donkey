@@ -6,7 +6,9 @@ from telebot.types import Message as TelebotMessage, CallbackQuery
 from smart_donkey import settings
 from smart_donkey._defaults import DEFAULT_CONFIG_VALUES
 from smart_donkey.crud.access import has_access
+from smart_donkey.crud.chats import get_chat, register_chat
 from smart_donkey.crud.config import get_config, register_config
+from smart_donkey.crud.users import get_user, register_user
 from smart_donkey.db import SessionLocal
 import time
 
@@ -28,6 +30,15 @@ def check_access_and_config():
                 if not accessed:
                     logger.warning("User not accessed: %d", msg.from_user.id)
                     return
+                
+                chat = await get_chat(session, msg.chat.id)
+                if not chat:
+                    await register_chat(session, msg.chat.id)
+                
+                user = await get_user(session, msg.from_user.id)
+                if not user:
+                    await register_user(session, msg.chat.id)
+                    
                 config = await get_config(session, msg.chat.id)
 
                 if not config:
