@@ -58,7 +58,7 @@ class Config(Base):
     language_model: Mapped[str] = mapped_column(Text, nullable=False)
     image_model: Mapped[str] = mapped_column(Text, nullable=True)
     provider: Mapped[str] = mapped_column(Text, nullable=False)
-    instructions: Mapped[str] = mapped_column(Text, nullable=True)
+    instruction: Mapped[str] = mapped_column(Text, nullable=True)
     streaming: Mapped[bool] = mapped_column(Boolean, nullable=False)
     created_at: Mapped["TIMESTAMP"] = mapped_column(
         TIMESTAMP, server_default=func.now()

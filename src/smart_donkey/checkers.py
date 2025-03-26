@@ -4,7 +4,9 @@ from logging import getLogger
 from telebot.types import Message as TelebotMessage
 
 from smart_donkey import settings
+from smart_donkey._defaults import DEFAULT_CONFIG_VALUES
 from smart_donkey.crud.access import has_access
+from smart_donkey.crud.config import get_config, register_config
 from smart_donkey.db import SessionLocal
 import time
 
@@ -12,7 +14,7 @@ logger = getLogger(__name__)
 
 user_cooldowns = {}
 
-def check_access():
+def check_access_and_config():
     def decorator(handler):
         @wraps(handler)
         async def wrapper(message: TelebotMessage, *args, **kwargs):
@@ -20,16 +22,21 @@ def check_access():
                 accessed = await has_access(
                     session, message.chat.id, message.from_user.id
                 )
-
                 if not accessed:
                     logger.warning("User not accessed: %d", message.from_user.id)
                     return
+                config = await get_config(session, message.chat.id)
+
+                if not config:
+                    await register_config(session, message.chat.id, **DEFAULT_CONFIG_VALUES)
+
 
             return await handler(message, *args, **kwargs)
 
         return wrapper
 
     return decorator
+
 
 
 def check_owner():
@@ -62,3 +69,4 @@ def cooldown(seconds: int):
             return await func(message, *args, **kwargs)
         return wrapper
     return decorator
+

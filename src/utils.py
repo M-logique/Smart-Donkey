@@ -1,5 +1,5 @@
 from typing import Dict, List
-
+from re import sub
 from smart_donkey._defaults import DEFAULT_SYSTEM_MESSAGE
 from smart_donkey.db.models import Message
 
@@ -21,3 +21,11 @@ def format_messages(messages: List[Message], instruction: str) -> List[Dict[str,
 
     return list(reversed(final_messages))
 
+
+def extract_text(message_text: str) -> str | None:
+    if not message_text:
+        return None
+
+    text = sub(r"^/\S+\s*", "", message_text, count=1).strip()
+
+    return text if text else None

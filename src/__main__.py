@@ -12,13 +12,12 @@ from telebot.types import Message as TelebotMessage
 from error_handler import ErrorHandler
 from smart_donkey import settings
 from smart_donkey._defaults import DEFAULT_CONFIG_VALUES
-from smart_donkey.checkers import check_access, cooldown
-from smart_donkey.crud.access import grant_access
+from smart_donkey.checkers import check_access_and_config, cooldown
 from smart_donkey.crud.config import get_config, register_config, update_config
 from smart_donkey.crud.messages import add_message, get_messages
 from smart_donkey.crud.users import get_user, register_user
 from smart_donkey.db import *
-from utils import format_messages
+from utils import extract_text, format_messages
 from telebot import types 
 
 
@@ -48,7 +47,7 @@ async def start_command(message: TelebotMessage):
 
 
 @bot.message_handler(commands=["ask"])
-@check_access()
+@check_access_and_config()
 @cooldown(3)
 async def ask_command(message: TelebotMessage):
     await bot.send_chat_action(message.chat.id, 'typing')
@@ -60,7 +59,7 @@ async def ask_command(message: TelebotMessage):
 
         dict_message = {
             "role": "user",
-            "content": message.text or "No content in the message.",
+            "content": extract_text(message.text) or "No content in the message.",
         }
 
         file_hash = None
@@ -144,7 +143,6 @@ def get_config_markup(user_id):
 
     markup.add(
         btn("🌐 Provider", callback_data=f"conf_provider:{user_id}"),
-        btn("📝 Instruction", callback_data=f"conf_instruction:{user_id}"),
         btn("💬 Language Model", callback_data=f"conf_lm:{user_id}"),
         btn("🖼️ Image Model", callback_data=f"conf_im:{user_id}"),
         btn("📡 Streaming", callback_data=f"conf_streaming:{user_id}"),
@@ -253,9 +251,8 @@ async def show_image_model_selector(message: TelebotMessage, user_id):
 
     await bot.edit_message_text(text, message.chat.id, message.id, reply_markup=markup)
     
-    
-
 @bot.callback_query_handler(func=lambda call: call.data.startswith("conf_"))
+@check_access_and_config()
 async def handle_config_callback(call: types.CallbackQuery):
     data, user_id = call.data.split(":")
     chat_id = call.message.chat.id
@@ -281,6 +278,13 @@ async def handle_config_callback(call: types.CallbackQuery):
         await show_image_model_selector(call.message, user_id)
         return
     
+    if data == "streaming":
+        async with SessionLocal() as session:
+            config = await get_config(session, chat_id)
+            config["streaming"] = not config.streaming
+            state = "Enabled" if config["streaming"] else "Disabled"
+            await bot.answer_callback_query(call.id, f"📡 Streaming is now {state}")
+
 
 
     if data.startswith("provider_"):
@@ -301,7 +305,20 @@ async def handle_config_callback(call: types.CallbackQuery):
 
     await bot.edit_message_text(text, chat_id, message_id, reply_markup=get_config_markup(user_id))
 
+@bot.message_handler(commands=["instruction"])
+@check_access_and_config()
+@cooldown(3)
+async def set_instructions(message: TelebotMessage):
+    text = extract_text(message.text)
 
+    if not text:
+        await bot.reply_to(message, "🚧 Correct usage:\n  -> /instruction **text**")
+        return
+    
+    async with SessionLocal() as session:
+        await update_config(session, message.chat.id, instruction=text)
+
+    await bot.reply_to(message, "✏️ instructions updated successfully!")
     
 async def main():
     await init_db()
