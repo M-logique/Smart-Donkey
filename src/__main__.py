@@ -1,7 +1,9 @@
+import json
 import logging
-from asyncio import run as asyncio_run
+from asyncio import gather, run as asyncio_run
 from io import BytesIO
 
+from aiohttp import ClientSession
 from g4f import Provider
 from g4f.client import AsyncClient
 from PIL import Image
@@ -12,11 +14,13 @@ from telebot.types import Message as TelebotMessage
 from error_handler import ErrorHandler
 from smart_donkey import settings
 from smart_donkey._defaults import DEFAULT_CONFIG_VALUES
-from smart_donkey.checkers import check_access_and_config, cooldown
+from smart_donkey.checkers import check_access_and_config, check_owner, cooldown
+from smart_donkey.crud.access import grant_access, remove_access
 from smart_donkey.crud.config import get_config, register_config, update_config
 from smart_donkey.crud.messages import add_message, get_messages
 from smart_donkey.crud.users import get_user, register_user
 from smart_donkey.db import *
+from smart_donkey.db.models import ImageGeneration
 from utils import extract_text, format_messages
 from telebot import types 
 
@@ -45,6 +49,7 @@ async def start_command(message: TelebotMessage):
             normal_msg = "Welcome back! How can I assist you today?"
             await bot.reply_to(message, normal_msg)
 
+MAX_MESSAGE_LENGTH = 4096  # Telegram's max message length
 
 @bot.message_handler(commands=["ask"])
 @check_access_and_config()
@@ -96,16 +101,13 @@ async def ask_command(message: TelebotMessage):
         provider = getattr(Provider, config.provider)
         client = AsyncClient(provider)
 
-
-        # TODO: Send message if couldn't reply
-
         dict_messages = format_messages(messages, instruction=config.instructions) + [dict_message]
         logger.debug("Generating response in %d, Messages: %s", message.chat.id, str(dict_messages))
         logger.debug("file hash: %s", file_hash)
 
         try:
             response = await client.chat.completions.create(
-                model=config.model,
+                model=config.language_model,
                 messages=dict_messages,
                 image=image,
             )
@@ -113,11 +115,10 @@ async def ask_command(message: TelebotMessage):
         except Exception as err:
             await bot.reply_to(message, f"❗️ There was an error: {err}")
             return
-        
 
-        await bot.reply_to(message, response_message)
+        for chunk in split_text(response_message, MAX_MESSAGE_LENGTH):
+            await bot.reply_to(message, chunk)
 
-        # Add message to the database
         await add_message(
             session,
             dict_message.get("content"),
@@ -136,6 +137,85 @@ async def ask_command(message: TelebotMessage):
             "assistant",
             file_hash if not fetched else None,
         )
+
+def split_text(text, max_length):
+    return [text[i : i + max_length] for i in range(0, len(text), max_length)]
+
+@bot.message_handler(commands=["imagine"])
+@check_access_and_config()
+@cooldown(7)
+async def imagine_command(message: TelebotMessage):
+    text = extract_text(message.text)
+    if not text:
+        await bot.reply_to(message, "🚧 Correct usage:\n  -> /imagine **text**\n\n💡 -> You can reply to an image to use it in image generations")
+        return
+    await bot.send_chat_action(message.chat.id, 'upload_photo')
+    
+    async with SessionLocal() as session:
+        config = await get_config(session, message.chat.id)
+
+        image_model = config.image_model
+
+    if not image_model:
+        await bot.reply_to(message, "❗️ Your current provider does not support image generations!")
+        return
+    
+    client = AsyncClient(
+        image_provider=getattr(Provider, config.provider),
+    )
+
+    file_hash = None
+    image = None
+
+    if message.photo:
+        file_hash = message.photo[-1].file_id
+    elif message.reply_to_message and message.reply_to_message.photo:
+        file_hash = message.reply_to_message.photo[-1].file_id
+
+    if file_hash:
+        file = await bot.get_file(file_hash)
+        downloaded_file = await bot.download_file(file.file_path)
+
+        bytes_io = BytesIO(downloaded_file)
+        image = Image.open(bytes_io)
+
+    response = await client.images.generate(
+        prompt=text,
+        model=config.image_model,
+        image=image,
+        response_format="url"
+    )
+
+    image_urls = [data.url for data in response.data]
+    
+    async def fetch_image(url: str):
+        async with ClientSession() as session:
+            async with session.get(url) as resp:
+                return BytesIO(await resp.read())
+
+    bytes_io_list = await gather(*(fetch_image(url) for url in image_urls))
+
+    medias = [
+        types.InputMediaPhoto(media=bytes_io, caption=f"💡 Prompt: _{text}_")
+        for bytes_io in bytes_io_list
+    ]
+
+    messages = await bot.send_media_group(message.chat.id, media=medias)
+
+    file_hashes = [msg.photo[-1].file_id for msg in messages if msg.photo]
+
+    async with SessionLocal() as session:
+        image_generation = ImageGeneration(
+            prompt=text,
+            message_id=message.id,
+            author_id=message.from_user.id,
+            chat_id=message.chat.id,
+            input_file_hash=file_hash,
+            output_file_hashes=json.dumps(file_hashes),
+        )
+
+        session.add(image_generation)
+        await session.commit()
 
 def get_config_markup(user_id):
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -319,10 +399,38 @@ async def set_instructions(message: TelebotMessage):
         await update_config(session, message.chat.id, instruction=text)
 
     await bot.reply_to(message, "✏️ instructions updated successfully!")
+
+
+@bot.message_handler(commands=["grant_access"])
+@check_owner()
+async def handle_grant_access(message: TelebotMessage):
+    parts = (extract_text(message.text) or " ").split()
+    if len(parts) < 3:
+        return await bot.reply_to(message, "Usage: /grant_access <chat_id> <user_id> <access_type>")
     
+    chat_id, user_id, access_type = parts[0], parts[1], parts[2]
+
+    async with SessionLocal() as session:
+        result = await grant_access(session, chat_id, user_id, AccessType[access_type.upper()])
+        await bot.reply_to(message, "Access sexed sex")
+
+@bot.message_handler(commands=["remove_access"])
+@check_owner()
+async def handle_remove_access(message):
+    parts = message.text.split()
+    if len(parts) < 3:
+        return await bot.reply_to(message, "Usage: /remove_access <chat_id> <user_id>")
+
+    chat_id, user_id = map(int, parts[1:3])
+
+    async with SessionLocal() as session:
+        result = await remove_access(session, chat_id, user_id)
+        await bot.reply_to(message, result)
+
 async def main():
     await init_db()
     await bot.polling()
+
 
 
 asyncio_run(main())

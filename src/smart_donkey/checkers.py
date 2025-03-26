@@ -1,7 +1,7 @@
 from functools import wraps
 from logging import getLogger
 
-from telebot.types import Message as TelebotMessage
+from telebot.types import Message as TelebotMessage, CallbackQuery
 
 from smart_donkey import settings
 from smart_donkey._defaults import DEFAULT_CONFIG_VALUES
@@ -18,23 +18,25 @@ def check_access_and_config():
     def decorator(handler):
         @wraps(handler)
         async def wrapper(message: TelebotMessage, *args, **kwargs):
+            msg = message
+            if isinstance(message, CallbackQuery):
+                msg = message.message
             async with SessionLocal() as session:
                 accessed = await has_access(
-                    session, message.chat.id, message.from_user.id
+                    session, msg.chat.id, msg.from_user.id
                 )
                 if not accessed:
-                    logger.warning("User not accessed: %d", message.from_user.id)
+                    logger.warning("User not accessed: %d", msg.from_user.id)
                     return
-                config = await get_config(session, message.chat.id)
+                config = await get_config(session, msg.chat.id)
 
                 if not config:
-                    await register_config(session, message.chat.id, **DEFAULT_CONFIG_VALUES)
+                    await register_config(session, msg.chat.id, **DEFAULT_CONFIG_VALUES)
 
 
             return await handler(message, *args, **kwargs)
 
         return wrapper
-
     return decorator
 
 
