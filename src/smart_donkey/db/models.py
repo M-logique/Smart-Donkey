@@ -55,7 +55,8 @@ class Config(Base):
     chat_id: Mapped[int] = mapped_column(
         ForeignKey("chats._id", ondelete="CASCADE"), nullable=False
     )
-    model: Mapped[str] = mapped_column(Text, nullable=False)
+    language_model: Mapped[str] = mapped_column(Text, nullable=False)
+    image_model: Mapped[str] = mapped_column(Text, nullable=True)
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     instructions: Mapped[str] = mapped_column(Text, nullable=True)
     streaming: Mapped[bool] = mapped_column(Boolean, nullable=False)

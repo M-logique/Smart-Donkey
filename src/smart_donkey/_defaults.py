@@ -1,5 +1,6 @@
 DEFAULT_PROVIDER = "Blackbox"
-DEFAULT_MODEL = "gpt-4o"
+DEFAULT_LANGUAGE_MODEL = "gpt-4o"
+DEFAULT_IMAGE_MODEL = "flux"
 DEFAULT_STREAMING_STATUS = False
 DEFAULT_INSTRUCTIONS = (
     "Hey there, I'm Smart Donkey! I'm here to help you out. "
@@ -15,8 +16,9 @@ DEFAULT_SYSTEM_MESSAGE = (
 )
 
 DEFAULT_CONFIG_VALUES = {
-    "model": DEFAULT_MODEL,
+    "language_model": DEFAULT_LANGUAGE_MODEL,
     "provider": DEFAULT_PROVIDER,
     "instructions": DEFAULT_INSTRUCTIONS,
-    "streaming": DEFAULT_STREAMING_STATUS
+    "streaming": DEFAULT_STREAMING_STATUS,
+    "image_model": DEFAULT_IMAGE_MODEL
 }

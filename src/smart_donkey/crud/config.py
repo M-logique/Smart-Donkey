@@ -9,18 +9,12 @@ logger = getLogger(__name__)
 
 
 async def register_config(
-    session: AsyncSession, chat_id: int, model: str, provider: str, streaming: bool, instructions: str
+    session: AsyncSession, chat_id: int, **kwargs
 ) -> Config:
-    logger.debug(
-        "Registering config for chat: %s, model: %s, provider: %s",
-        chat_id,
-        model,
-        provider,
-    )
+
 
     new_config = Config(
-        chat_id=chat_id, model=model, provider=provider, streaming=streaming, instructions=instructions
-    )
+        chat_id=chat_id, **kwargs)
     session.add(new_config)
 
     await session.commit()
@@ -61,26 +55,18 @@ async def get_config(session: AsyncSession, chat_id: int) -> Config | None:
 
 
 async def update_config(
-    session: AsyncSession, chat_id: int, model: str, provider: str
+    session: AsyncSession, chat_id: int, **kwargs,
 ) -> bool:
-    logger.debug(
-        "Updating config for chat: %s, model: %s, provider: %s",
-        chat_id,
-        model,
-        provider,
-    )
 
     result = await session.execute(select(Config).where(Config.chat_id == chat_id))
     config = result.scalars().first()
 
     if config:
-        config.model = model
-        config.provider = provider
+        for k, v in kwargs.items():
+            setattr(config, k, v)
 
         await session.commit()
         logger.debug("Config updated successfully for chat: %s", chat_id)
         return True
-
-    logger.debug("Config not found for chat: %s, creating new config", chat_id)
-    await register_config(session, chat_id, model, provider)
-    return False
+    
+    await register_config(session, chat_id, **kwargs)

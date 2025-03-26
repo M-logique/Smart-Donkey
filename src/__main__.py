@@ -14,7 +14,7 @@ from smart_donkey import settings
 from smart_donkey._defaults import DEFAULT_CONFIG_VALUES
 from smart_donkey.checkers import check_access, cooldown
 from smart_donkey.crud.access import grant_access
-from smart_donkey.crud.config import get_config, register_config
+from smart_donkey.crud.config import get_config, register_config, update_config
 from smart_donkey.crud.messages import add_message, get_messages
 from smart_donkey.crud.users import get_user, register_user
 from smart_donkey.db import *
@@ -138,23 +138,122 @@ async def ask_command(message: TelebotMessage):
             file_hash if not fetched else None,
         )
 
-@bot.message_handler(commands=["config"])
-async def config_command(message: TelebotMessage):
-
+def get_config_markup(user_id):
     markup = types.InlineKeyboardMarkup(row_width=2)
     btn = types.InlineKeyboardButton
-    user_id = message.from_user.id
 
     markup.add(
-        btn("⚙️ Model", callback_data=f"conf_model:{user_id}"),
         btn("🌐 Provider", callback_data=f"conf_provider:{user_id}"),
         btn("📝 Instruction", callback_data=f"conf_instruction:{user_id}"),
+        btn("💬 Language Model", callback_data=f"conf_lm:{user_id}"),
+        btn("🖼️ Image Model", callback_data=f"conf_im:{user_id}"),
         btn("📡 Streaming", callback_data=f"conf_streaming:{user_id}"),
-        btn("💾 Save", callback_data=f"conf_save:{user_id}")
     )
 
+    return markup
+
+@bot.message_handler(commands=["config"])
+async def config_command(message: TelebotMessage):
+    await bot.send_chat_action(message.chat.id, 'typing')
+    markup = get_config_markup(message.from_user.id)
     await bot.reply_to(message, "💠 **Select what you want to change:**", reply_markup=markup, parse_mode="Markdown")
 
+
+async def show_provider_selector(message: TelebotMessage, user_id: int):
+    markup = types.InlineKeyboardMarkup(row_width=3)
+
+    all_providers = [
+        getattr(Provider, p) for p in dir(Provider)
+        if isinstance(getattr(Provider, p), type) and p != "Local"
+    ]
+
+    free_providers = [
+        provider for provider in all_providers
+        if hasattr(provider, "supports_system_message") 
+        and hasattr(provider, "supports_message_history") 
+        and hasattr(provider, "needs_auth")
+        and hasattr(provider, "default_model")
+        and provider.supports_system_message
+        and provider.supports_message_history
+        and not provider.needs_auth
+        and provider.default_model
+    ]
+
+    buttons = [
+        types.InlineKeyboardButton(provider.__name__, callback_data=f"conf_provider_{provider.__name__}:{user_id}")
+        for provider in free_providers
+    ]
+    buttons.append(
+        types.InlineKeyboardButton(
+            "↬ Back", 
+            callback_data=f"conf_back:{user_id}"
+        )
+    )
+
+    markup.add(*buttons)
+
+    await bot.edit_message_text("🌐 **Please select a provider:**", message.chat.id, message.id, reply_markup=markup)
+
+async def show_language_model_selector(message: TelebotMessage, user_id):
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    async with SessionLocal() as session:
+        config = await get_config(session, message.chat.id)
+
+        provider = config.provider
+
+    provider_cls = getattr(Provider, provider)
+
+    language_models = provider_cls.models
+
+    buttons = [
+        types.InlineKeyboardButton(model, callback_data=f"conf_lm_{model}:{user_id}")
+        for model in language_models
+    ]
+
+    buttons.append(
+        types.InlineKeyboardButton(
+            "↬ Back", 
+            callback_data=f"conf_back:{user_id}"
+        )
+    )
+
+    markup.add(*buttons)
+
+    await bot.edit_message_text("💬 Select a language model: ", message.chat.id, message.id, reply_markup=markup)
+
+async def show_image_model_selector(message: TelebotMessage, user_id):
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    async with SessionLocal() as session:
+        config = await get_config(session, message.chat.id)
+
+        provider = config.provider
+
+    provider_cls = getattr(Provider, provider)
+
+    image_models = provider_cls.image_models
+
+    buttons = [
+        types.InlineKeyboardButton(model, callback_data=f"conf_lm_{model}:{user_id}")
+        for model in image_models
+    ]
+
+    buttons.append(
+        types.InlineKeyboardButton(
+            "↬ Back", 
+            callback_data=f"conf_back:{user_id}"
+        )
+    )
+
+    markup.add(*buttons)
+
+    text = "🖼️ Select an image model: "
+
+    if len(buttons) == 1:
+        text = "❗️ Your current provider has no image models"
+
+    await bot.edit_message_text(text, message.chat.id, message.id, reply_markup=markup)
+    
+    
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("conf_"))
 async def handle_config_callback(call: types.CallbackQuery):
@@ -162,27 +261,50 @@ async def handle_config_callback(call: types.CallbackQuery):
     chat_id = call.message.chat.id
     message_id = call.message.id
 
-    if str(call.from_user.id) != user_id:
+    data = data[5:]
+
+    if call.from_user.id != int(user_id):
         await bot.answer_callback_query(call.id, "⛔ You are not allowed to use this!", show_alert=True)
         return
     
-    call_instance_id = f"_config_of_{chat_id}_{user_id}_{message_id}"
-    config = getattr(bot, call_instance_id)
+    config = dict()
 
-    if not config:
-        config = dict()
+    if data == "provider":
+        await show_provider_selector(call.message, user_id)
+        return
+    
+    if data == "lm":
+        await show_language_model_selector(call.message, user_id)
+        return
+    
+    if data == "im":
+        await show_image_model_selector(call.message, user_id)
+        return
+    
 
-    setattr(bot, call_instance_id, config)
 
-    # await bot.answer_callback_query(call.id, "✅ Setting applied!")
-    # await bot.send_message(call.message.chat.id, f"🔧 You selected `{data[5:]}`.", parse_mode="Markdown")
+    if data.startswith("provider_"):
+        provider_name = data[len("provider_"):]
+        config["provider"] = provider_name
+        provider_cls = getattr(Provider, provider_name)
+        config["language_model"] = provider_cls.default_model
+        config["image_model"] = getattr(provider_cls, "default_image_model", None)
+    
+    if data.startswith("lm_"):
+        lm_name = data[len("lm_"):]
+        config["language_model"] = lm_name
+    
+    
+    text = "💠 **Select what you want to change:**"
+    async with SessionLocal() as session:
+        await update_config(session, chat_id, **config)
 
+    await bot.edit_message_text(text, chat_id, message_id, reply_markup=get_config_markup(user_id))
+
+
+    
 async def main():
     await init_db()
-    # async with SessionLocal() as session:
-    #     await grant_access(session, 5520073297, 5520073297, AccessType.GLOBAL)
-    # async with SessionLocal() as session:
-    #     await register_config(session, 5520073297, **DEFAULT_CONFIG_VALUES)
     await bot.polling()
 
 
