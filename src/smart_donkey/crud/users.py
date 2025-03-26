@@ -12,7 +12,7 @@ logger = getLogger(__name__)
 
 
 async def register_user(session: AsyncSession, user_id: int) -> User:
-    new_user = User(user_id=user_id)
+    new_user = User(user_id=int(user_id))
     session.add(new_user)
     await session.commit()
     await session.refresh(new_user)
@@ -33,7 +33,7 @@ async def delete_user(session: AsyncSession, user_id: int):
 
 
 async def get_user(session: AsyncSession, user_id: int) -> Optional[User]:
-    result = await session.execute(select(User).where(User.user_id == user_id))
+    result = await session.execute(select(User).where(User.user_id == int(user_id)))
     user = result.scalars().first()
 
     if user:
