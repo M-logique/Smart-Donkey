@@ -20,5 +20,5 @@ DEFAULT_CONFIG_VALUES = {
     "provider": DEFAULT_PROVIDER,
     "instructions": DEFAULT_INSTRUCTIONS,
     "streaming": DEFAULT_STREAMING_STATUS,
-    "image_model": DEFAULT_IMAGE_MODEL
+    "image_model": DEFAULT_IMAGE_MODEL,
 }

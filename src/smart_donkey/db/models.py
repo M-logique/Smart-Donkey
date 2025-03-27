@@ -1,8 +1,8 @@
 from enum import Enum as PyEnum
 from typing import List, Tuple
 
-from sqlalchemy import (JSON, TIMESTAMP, Boolean, Enum, ForeignKey, BigInteger, Text,
-                        UniqueConstraint, func)
+from sqlalchemy import (JSON, TIMESTAMP, BigInteger, Boolean, Enum, ForeignKey,
+                        Text, UniqueConstraint, func)
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 

@@ -8,13 +8,9 @@ from smart_donkey.db.models import Config
 logger = getLogger(__name__)
 
 
-async def register_config(
-    session: AsyncSession, chat_id: int, **kwargs
-) -> Config:
+async def register_config(session: AsyncSession, chat_id: int, **kwargs) -> Config:
 
-
-    new_config = Config(
-        chat_id=chat_id, **kwargs)
+    new_config = Config(chat_id=chat_id, **kwargs)
     session.add(new_config)
 
     await session.commit()
@@ -55,7 +51,9 @@ async def get_config(session: AsyncSession, chat_id: int) -> Config | None:
 
 
 async def update_config(
-    session: AsyncSession, chat_id: int, **kwargs,
+    session: AsyncSession,
+    chat_id: int,
+    **kwargs,
 ) -> bool:
 
     result = await session.execute(select(Config).where(Config.chat_id == chat_id))
@@ -68,5 +66,5 @@ async def update_config(
         await session.commit()
         logger.debug("Config updated successfully for chat: %s", chat_id)
         return True
-    
+
     await register_config(session, chat_id, **kwargs)

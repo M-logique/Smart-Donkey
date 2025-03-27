@@ -3,6 +3,7 @@ from traceback import format_exc
 
 logger = getLogger("errors")
 
+
 class ErrorHandler:
     @staticmethod
     def handle(exception: Exception):

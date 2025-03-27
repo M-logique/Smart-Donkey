@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from utils import stringify_attributes
+
 from ..db import *
 
 logger = getLogger(__name__)
@@ -71,12 +72,7 @@ async def get_messages(
 ) -> List[Message]:
     result = await session.execute(
         select(Message)
-        .filter(
-            and_(
-                Message.chat_id == chat_id,
-                Message.author_id == user_id
-            )
-        )
+        .filter(and_(Message.chat_id == chat_id, Message.author_id == user_id))
         .order_by(Message.created_at.desc())
         .limit(limit)
     )

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from utils import stringify_attributes
+
 from ..db import *
 
 logger = getLogger(__name__)
@@ -20,17 +21,17 @@ async def has_access(session: AsyncSession, chat_id: int, user_id: int) -> bool:
                 Accessed.access_type == AccessType.ALL,
                 and_(
                     Accessed.user_id == user_id,
-                    Accessed.access_type == AccessType.GLOBAL
+                    Accessed.access_type == AccessType.GLOBAL,
                 ),
                 and_(
                     Accessed.chat_id == chat_id,
-                    Accessed.access_type == AccessType.CHAT_ONLY
+                    Accessed.access_type == AccessType.CHAT_ONLY,
                 ),
                 and_(
                     Accessed.chat_id == chat_id,
                     Accessed.user_id == user_id,
-                    Accessed.access_type == AccessType.USER_IN_CHAT
-                )
+                    Accessed.access_type == AccessType.USER_IN_CHAT,
+                ),
             )
         )
     )
