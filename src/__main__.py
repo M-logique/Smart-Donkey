@@ -16,6 +16,7 @@ from smart_donkey import settings
 from smart_donkey._defaults import DEFAULT_CONFIG_VALUES
 from smart_donkey.checkers import check_access_and_config, check_owner, cooldown
 from smart_donkey.crud.access import grant_access, remove_access
+from smart_donkey.crud.chats import get_chat, register_chat
 from smart_donkey.crud.config import get_config, register_config, update_config
 from smart_donkey.crud.messages import add_message, get_messages
 from smart_donkey.crud.users import get_user, register_user
@@ -31,6 +32,18 @@ logger = logging.getLogger(__name__)
 bot = AsyncTeleBot(token=settings.TOKEN, parse_mode="Markdown", validate_token=True, 
     exception_handler=ErrorHandler                 
 )
+
+@bot.message_handler(func=lambda _: True)
+async def register_missings(message: TelebotMessage):
+    async with SessionLocal() as session:
+        user = await get_user(session, message.from_user.id)
+        chat = await get_chat(session, message.chat.id)
+        if not user:
+            await register_user(session, message.from_user.id)
+        if not chat:
+            await register_chat(session, message.chat.id)
+        
+
 
 
 @bot.message_handler(commands=["start"])
@@ -408,7 +421,7 @@ async def handle_grant_access(message: TelebotMessage):
     if len(parts) < 3:
         return await bot.reply_to(message, "Usage: /grant_access <chat_id> <user_id> <access_type>")
     
-    chat_id, user_id, access_type = parts[0], parts[1], parts[2]
+    chat_id, user_id, access_type = int(parts[0]), int(parts[1]), parts[2]
 
     async with SessionLocal() as session:
         result = await grant_access(session, chat_id, user_id, AccessType[access_type.upper()])

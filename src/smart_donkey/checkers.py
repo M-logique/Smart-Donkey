@@ -29,15 +29,7 @@ def check_access_and_config():
                 )
                 if not accessed:
                     logger.warning("User not accessed: %d", msg.from_user.id)
-                    return
-                
-                chat = await get_chat(session, msg.chat.id)
-                if not chat:
-                    await register_chat(session, msg.chat.id)
-                
-                user = await get_user(session, msg.from_user.id)
-                if not user:
-                    await register_user(session, msg.chat.id)
+                    return                
                     
                 config = await get_config(session, msg.chat.id)
 

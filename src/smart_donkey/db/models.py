@@ -9,6 +9,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 __all__: Tuple[str, ...] = (
     "Base",
     "Message",
+    "ImageGeneration",
     "Config",
     "Accessed",
     "User",
