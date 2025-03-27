@@ -11,22 +11,14 @@ __all__: Tuple[str, ...] = (
     "Message",
     "ImageGeneration",
     "Config",
-    "Accessed",
     "User",
     "Chat",
-    "AccessType",
 )
 
 
 class Base(AsyncAttrs, DeclarativeBase):
     pass
 
-
-class AccessType(PyEnum):
-    CHAT_ONLY = 0
-    GLOBAL = 1
-    USER_IN_CHAT = 2
-    ALL = 3
 
 
 class Message(Base):
@@ -80,25 +72,6 @@ class Config(Base):
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     instructions: Mapped[str] = mapped_column(Text, nullable=True)
     streaming: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    created_at: Mapped["TIMESTAMP"] = mapped_column(
-        TIMESTAMP, server_default=func.now()
-    )
-
-
-class Accessed(Base):
-    __tablename__ = "accessed"
-    __table_args__ = (UniqueConstraint("chat_id", "user_id"),)
-
-    _id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    chat_id: Mapped[int] = mapped_column(
-        ForeignKey("chats.chat_id", ondelete="CASCADE"), nullable=True
-    )
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.user_id", ondelete="CASCADE"), nullable=True
-    )
-    access_type: Mapped[AccessType] = mapped_column(
-        Enum(AccessType), nullable=False, default=AccessType.CHAT_ONLY
-    )
     created_at: Mapped["TIMESTAMP"] = mapped_column(
         TIMESTAMP, server_default=func.now()
     )

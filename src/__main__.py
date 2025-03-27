@@ -16,10 +16,8 @@ from telebot.types import Message as TelebotMessage
 from error_handler import ErrorHandler
 from smart_donkey import settings
 from smart_donkey._defaults import DEFAULT_CONFIG_VALUES
-from smart_donkey.checkers import (check_access_and_config, check_owner,
+from smart_donkey.checkers import (check_config, check_owner,
                                    cooldown, register_missings)
-from smart_donkey.crud.access import grant_access, remove_access
-from smart_donkey.crud.chats import get_chat, register_chat
 from smart_donkey.crud.config import get_config, register_config, update_config
 from smart_donkey.crud.messages import add_message, get_messages
 from smart_donkey.crud.users import get_user, register_user
@@ -61,7 +59,7 @@ MAX_MESSAGE_LENGTH = 4096  # Telegram's max message length
 
 @bot.message_handler(commands=["ask"])
 @register_missings()
-@check_access_and_config()
+@check_config()
 @cooldown(3)
 async def ask_command(message: TelebotMessage):
     await bot.send_chat_action(message.chat.id, "typing")
@@ -160,7 +158,7 @@ def split_text(text, max_length):
 
 @bot.message_handler(commands=["imagine"])
 @register_missings()
-@check_access_and_config()
+@check_config()
 @cooldown(7)
 async def imagine_command(message: TelebotMessage):
     text = extract_text(message.text)
@@ -253,6 +251,7 @@ def get_config_markup(user_id):
 
 
 @bot.message_handler(commands=["config"])
+@check_config()
 @register_missings()
 async def config_command(message: TelebotMessage):
     await bot.send_chat_action(message.chat.id, "typing")
@@ -366,7 +365,7 @@ async def show_image_model_selector(message: TelebotMessage, user_id):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("conf_"))
-@check_access_and_config()
+@check_config()
 async def handle_config_callback(call: types.CallbackQuery):
     data, user_id = call.data.split(":")
     chat_id = call.message.chat.id
@@ -423,7 +422,7 @@ async def handle_config_callback(call: types.CallbackQuery):
 
 @bot.message_handler(commands=["instruction"])
 @register_missings()
-@check_access_and_config()
+@check_config()
 @cooldown(3)
 async def set_instructions(message: TelebotMessage):
     text = extract_text(message.text)
@@ -437,45 +436,6 @@ async def set_instructions(message: TelebotMessage):
 
     await bot.reply_to(message, "✏️ instructions updated successfully!")
 
-
-@bot.message_handler(commands=["grant_access"])
-@check_owner(bot)
-async def handle_grant_access(message: TelebotMessage):
-    parts = (extract_text(message.text) or " ").split()
-    if len(parts) < 3:
-        return await bot.reply_to(
-            message, "Usage: /grant_access <chat_id> <user_id> <access_type>"
-        )
-
-    chat_id, user_id, access_type = (
-        int(parts[0]) if parts[0] != "None" else None,
-        int(parts[1]) if parts[1] != "None" else None,
-        parts[2],
-    )
-
-    async with SessionLocal() as session:
-        if user_id and not await get_user(session, user_id):
-            await register_user(session, user_id)
-        if chat_id and not await get_chat(session, chat_id):
-            await register_chat(session, chat_id)
-
-        await grant_access(session, chat_id, user_id, AccessType[access_type.upper()])
-        await bot.reply_to(message, "Access sexed sex")
-
-
-@bot.message_handler(commands=["remove_access"])
-@register_missings()
-@check_owner(bot)
-async def handle_remove_access(message):
-    parts = message.text.split()
-    if len(parts) < 3:
-        return await bot.reply_to(message, "Usage: /remove_access <chat_id> <user_id>")
-
-    chat_id, user_id = map(int, parts[1:3])
-
-    async with SessionLocal() as session:
-        result = await remove_access(session, chat_id, user_id)
-        await bot.reply_to(message, result)
 
 
 async def main():
