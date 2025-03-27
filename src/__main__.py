@@ -395,8 +395,8 @@ async def handle_config_callback(call: types.CallbackQuery):
 
     if data == "streaming":
         async with SessionLocal() as session:
-            config = await get_config(session, chat_id)
-            config["streaming"] = not config.streaming
+            conf = await get_config(session, chat_id)
+            config["streaming"] = not conf.streaming
             state = "Enabled" if config["streaming"] else "Disabled"
             await bot.answer_callback_query(call.id, f"📡 Streaming is now {state}")
 
