@@ -38,6 +38,7 @@ bot = AsyncTeleBot(
 
 @bot.message_handler(commands=["start"])
 @register_missings()
+@check_config()
 async def start_command(message: TelebotMessage):
     async with SessionLocal() as session:
         user = await get_user(session, message.from_user.id)
@@ -251,8 +252,8 @@ def get_config_markup(user_id):
 
 
 @bot.message_handler(commands=["config"])
-@check_config()
 @register_missings()
+@check_config()
 async def config_command(message: TelebotMessage):
     await bot.send_chat_action(message.chat.id, "typing")
     markup = get_config_markup(message.from_user.id)
