@@ -882,7 +882,11 @@ async def handle_grant_access(message: TelebotMessage):
             message, "Usage: /grant_access <chat_id> <user_id> <access_type>"
         )
 
-    chat_id, user_id, access_type = int(parts[0]), int(parts[1]), parts[2]
+    chat_id, user_id, access_type = (
+        int(parts[0]) if parts[0] != "None" else None,
+        int(parts[1]) if parts[1] != "None" else None,
+        parts[2],
+    )
 
     async with SessionLocal() as session:
         if not await get_user(session, user_id):
