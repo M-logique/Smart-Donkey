@@ -889,9 +889,9 @@ async def handle_grant_access(message: TelebotMessage):
     )
 
     async with SessionLocal() as session:
-        if not await get_user(session, user_id):
+        if user_id and not await get_user(session, user_id):
             await register_user(session, user_id)
-        if not await get_chat(session, chat_id):
+        if chat_id and not await get_chat(session, chat_id):
             await register_chat(session, chat_id)
 
         await grant_access(session, chat_id, user_id, AccessType[access_type.upper()])
