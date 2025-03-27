@@ -366,7 +366,6 @@ async def show_image_model_selector(message: TelebotMessage, user_id):
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("conf_"))
-@register_missings()
 @check_access_and_config()
 async def handle_config_callback(call: types.CallbackQuery):
     data, user_id = call.data.split(":")
