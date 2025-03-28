@@ -448,6 +448,9 @@ async def set_instructions(message: TelebotMessage):
 
 
 @bot.message_handler(commands="clear_history")
+@register_missings()
+@check_config()
+@cooldown(3)
 async def clear_history_command(message: TelebotMessage):
     async with SessionLocal() as session:
         result = await session.execute(
@@ -517,8 +520,8 @@ async def clear_yes_no_handler(call: types.CallbackQuery):
         await bot.edit_message_text(
             "❌ Action canceled. ",
             reply_markup=None,
-            chat_id=message.chat.id,
-            message_id=message.id,
+            chat_id=call.message.chat.id,
+            message_id=call.message.id,
         )
 
 
