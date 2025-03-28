@@ -146,7 +146,7 @@ async def ask_command(message: TelebotMessage):
             message_id=message.id,
             author_id=message.from_user.id,
             chat_id=message.chat.id,
-            role_id="user",
+            role="user",
             file_hash=file_hash if not fetched else None,
             model=config.language_model.lower(),
         )
