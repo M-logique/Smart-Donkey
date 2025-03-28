@@ -61,7 +61,7 @@ async def get_messages(
 ) -> List[Message]:
     result = await session.execute(
         select(Message)
-        .filter(and_(Message.chat_id == chat_id, Message.author_id == user_id))
+        .filter(and_(Message.chat_id == chat_id, Message.author_id == user_id, Message.model == model.lower()))
         .order_by(Message.created_at.desc())
         .limit(limit)
     )
