@@ -25,10 +25,10 @@ def check_config():
             if isinstance(message, CallbackQuery):
                 msg = message.message
             async with SessionLocal() as session:
-                config = await get_config(session, msg.chat.id, msg.from_user.id)
+                config = await get_config(session, message.chat.id, message.from_user.id)
 
                 if not config:
-                    await register_config(session, msg.chat.id,user_id=msg.from_user.id, **DEFAULT_CONFIG_VALUES)
+                    await register_config(session, message.chat.id,user_id=message.from_user.id, **DEFAULT_CONFIG_VALUES)
 
             return await handler(message, *args, **kwargs)
 
