@@ -33,5 +33,6 @@ def extract_text(message_text: str) -> str | None:
 
     return text if text else None
 
+
 def no_need_to_think(text: str) -> str:
-    return  re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)

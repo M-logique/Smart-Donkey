@@ -1,5 +1,6 @@
 from logging import getLogger
 
+from sqlalchemy import and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -20,26 +21,14 @@ async def register_config(session: AsyncSession, chat_id: int, **kwargs) -> Conf
     return new_config
 
 
-async def delete_config(session: AsyncSession, chat_id: int) -> bool:
-    logger.debug("Attempting to delete config for chat: %s", chat_id)
-
-    result = await session.execute(select(Config).where(Config.chat_id == chat_id))
-    config = result.scalars().first()
-
-    if config:
-        await session.delete(config)
-        await session.commit()
-        logger.debug("Config deleted successfully for chat: %s", chat_id)
-        return True
-
-    logger.debug("Config not found for chat: %s", chat_id)
-    return False
-
-
-async def get_config(session: AsyncSession, chat_id: int) -> Config | None:
+async def get_config(
+    session: AsyncSession, chat_id: int, user_id: int
+) -> Config | None:
     logger.debug("Fetching config for chat: %s", chat_id)
 
-    result = await session.execute(select(Config).where(Config.chat_id == chat_id))
+    result = await session.execute(
+        select(Config).where(and_(Config.chat_id == chat_id, Config.user_id == user_id))
+    )
     config = result.scalars().first()
 
     if config:
@@ -53,10 +42,11 @@ async def get_config(session: AsyncSession, chat_id: int) -> Config | None:
 async def update_config(
     session: AsyncSession,
     chat_id: int,
+    user_id: int,
     **kwargs,
 ) -> bool:
 
-    result = await session.execute(select(Config).where(Config.chat_id == chat_id))
+    result = await session.execute(select(Config).where(and_(Config.chat_id == chat_id, Config.user_id == user_id)))
     config = result.scalars().first()
 
     if config:

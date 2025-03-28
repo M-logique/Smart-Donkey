@@ -67,6 +67,9 @@ class Config(Base):
     chat_id: Mapped[int] = mapped_column(
         ForeignKey("chats.chat_id", ondelete="CASCADE"), nullable=False
     )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False
+    )
     language_model: Mapped[str] = mapped_column(Text, nullable=False)
     image_model: Mapped[str] = mapped_column(Text, nullable=True)
     provider: Mapped[str] = mapped_column(Text, nullable=False)

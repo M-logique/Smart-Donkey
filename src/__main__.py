@@ -49,7 +49,12 @@ async def start_command(message: TelebotMessage):
                 "Type /help to see what I can do for you!"
             )
             await register_user(session, message.from_user.id)
-            await register_config(session, message.chat.id, **DEFAULT_CONFIG_VALUES)
+            await register_config(
+                session,
+                message.chat.id,
+                user_id=message.from_user.id,
+                **DEFAULT_CONFIG_VALUES,
+            )
             await bot.reply_to(message, welcome_msg)
         else:
             normal_msg = "Welcome back! How can I assist you today?"
@@ -66,7 +71,7 @@ MAX_MESSAGE_LENGTH = 4096  # Telegram's max message length
 async def ask_command(message: TelebotMessage):
     await bot.send_chat_action(message.chat.id, "typing")
     async with SessionLocal() as session:
-        config = await get_config(session, message.chat.id)
+        config = await get_config(session, message.chat.id, message.from_user.id)
 
         messages = await get_messages(
             session,
@@ -75,7 +80,7 @@ async def ask_command(message: TelebotMessage):
             config.language_model.lower(),
             30,
         )
-        config = await get_config(session, message.chat.id)
+        config = await get_config(session, message.chat.id, message.from_user.id)
 
         dict_message = {
             "role": "user",
@@ -183,7 +188,7 @@ async def imagine_command(message: TelebotMessage):
     await bot.send_chat_action(message.chat.id, "upload_photo")
 
     async with SessionLocal() as session:
-        config = await get_config(session, message.chat.id)
+        config = await get_config(session, message.chat.id, message.from_user.id)
 
         image_model = config.image_model
 
@@ -322,7 +327,7 @@ async def show_provider_selector(message: TelebotMessage, user_id: int):
 async def show_language_model_selector(message: TelebotMessage, user_id):
     markup = types.InlineKeyboardMarkup(row_width=3)
     async with SessionLocal() as session:
-        config = await get_config(session, message.chat.id)
+        config = await get_config(session, message.chat.id, message.from_user.id)
 
         provider = config.provider
 
@@ -349,7 +354,7 @@ async def show_language_model_selector(message: TelebotMessage, user_id):
 async def show_image_model_selector(message: TelebotMessage, user_id):
     markup = types.InlineKeyboardMarkup(row_width=3)
     async with SessionLocal() as session:
-        config = await get_config(session, message.chat.id)
+        config = await get_config(session, message.chat.id, message.from_user.id)
 
         provider = config.provider
 
@@ -407,7 +412,7 @@ async def handle_config_callback(call: types.CallbackQuery):
 
     if data == "streaming":
         async with SessionLocal() as session:
-            conf = await get_config(session, chat_id)
+            conf = await get_config(session, chat_id, int(user_id))
             config["streaming"] = not conf.streaming
             state = "Enabled" if config["streaming"] else "Disabled"
             await bot.answer_callback_query(call.id, f"📡 Streaming is now {state}")
@@ -425,7 +430,7 @@ async def handle_config_callback(call: types.CallbackQuery):
 
     text = "💠 **Select what you want to change:**"
     async with SessionLocal() as session:
-        await update_config(session, chat_id, **config)
+        await update_config(session, chat_id, user_id=call.from_user.id, **config)
 
     await bot.edit_message_text(
         text, chat_id, message_id, reply_markup=get_config_markup(user_id)
@@ -444,7 +449,9 @@ async def set_instructions(message: TelebotMessage):
         return
 
     async with SessionLocal() as session:
-        await update_config(session, message.chat.id, instruction=text)
+        await update_config(
+            session, message.chat.id, user_id=message.from_user.id, instruction=text
+        )
 
     await bot.reply_to(message, "✏️ instructions updated successfully!")
 
