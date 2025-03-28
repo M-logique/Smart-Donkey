@@ -24,7 +24,7 @@ from smart_donkey.crud.messages import add_message, get_messages
 from smart_donkey.crud.users import get_user, register_user
 from smart_donkey.db import *
 from smart_donkey.db.models import ImageGeneration
-from utils import extract_text, format_messages, no_need_to_think
+from utils import extract_text, format_messages, generate_config_message, no_need_to_think
 
 logger = logging.getLogger(__name__)
 
@@ -267,15 +267,19 @@ def get_config_markup(user_id):
     return markup
 
 
+
 @bot.message_handler(commands=["config"])
 @register_missings()
 @check_config()
 async def config_command(message: TelebotMessage):
     await bot.send_chat_action(message.chat.id, "typing")
     markup = get_config_markup(message.from_user.id)
+    async with SessionLocal() as session:
+        config = await get_config(session, message.chat.id, message.from_user.id)
+
     await bot.reply_to(
         message,
-        "💠 **Select what you want to change:**",
+        generate_config_message(config),
         reply_markup=markup,
         parse_mode="Markdown",
     )
@@ -396,6 +400,8 @@ async def handle_config_callback(call: types.CallbackQuery):
         )
         return
 
+    async with SessionLocal() as session:
+        conf = await get_config(session, chat_id, int(user_id))
     config = dict()
 
     if data == "provider":
@@ -411,11 +417,9 @@ async def handle_config_callback(call: types.CallbackQuery):
         return
 
     if data == "streaming":
-        async with SessionLocal() as session:
-            conf = await get_config(session, chat_id, int(user_id))
-            config["streaming"] = not conf.streaming
-            state = "Enabled" if config["streaming"] else "Disabled"
-            await bot.answer_callback_query(call.id, f"📡 Streaming is now {state}")
+        config["streaming"] = not conf.streaming
+        state = "Enabled" if config["streaming"] else "Disabled"
+        await bot.answer_callback_query(call.id, f"📡 Streaming is now {state}")
 
     if data.startswith("provider_"):
         provider_name = data[len("provider_") :]
@@ -428,12 +432,11 @@ async def handle_config_callback(call: types.CallbackQuery):
         lm_name = data[len("lm_") :]
         config["language_model"] = lm_name
 
-    text = "💠 **Select what you want to change:**"
     async with SessionLocal() as session:
         await update_config(session, chat_id, user_id=call.from_user.id, **config)
 
     await bot.edit_message_text(
-        text, chat_id, message_id, reply_markup=get_config_markup(user_id)
+        generate_config_message(conf), chat_id, message_id, reply_markup=get_config_markup(user_id)
     )
 
 

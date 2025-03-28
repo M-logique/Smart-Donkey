@@ -2,7 +2,7 @@ import re
 from typing import Dict, List
 
 from smart_donkey._defaults import DEFAULT_SYSTEM_MESSAGE
-from smart_donkey.db.models import Message
+from smart_donkey.db.models import Config, Message
 
 
 def stringify_attributes(obj):
@@ -36,3 +36,11 @@ def extract_text(message_text: str) -> str | None:
 
 def no_need_to_think(text: str) -> str:
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+
+def generate_config_message(config: Config):
+    return (
+        f"💠 Provider: **{config.provider}**\n"
+        f"💬 Language model: **{config.language_model}**\n"
+        f"🖼️ Image model: **{config.image_model}**\n\n"
+        "❓️ Select what do you want to change:"
+    )
