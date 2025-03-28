@@ -61,7 +61,7 @@ class ImageGeneration(Base):
 
 class Config(Base):
     __tablename__ = "config"
-    __table_args__ = (UniqueConstraint("chat_id"),)
+    __table_args__ = (UniqueConstraint("chat_id", "user_id"),)
 
     _id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     chat_id: Mapped[int] = mapped_column(
