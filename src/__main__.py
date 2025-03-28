@@ -16,8 +16,8 @@ from telebot.types import Message as TelebotMessage
 from error_handler import ErrorHandler
 from smart_donkey import settings
 from smart_donkey._defaults import DEFAULT_CONFIG_VALUES
-from smart_donkey.checkers import (check_config, check_owner,
-                                   cooldown, register_missings)
+from smart_donkey.checkers import (check_config, check_owner, cooldown,
+                                   register_missings)
 from smart_donkey.crud.config import get_config, register_config, update_config
 from smart_donkey.crud.messages import add_message, get_messages
 from smart_donkey.crud.users import get_user, register_user
@@ -65,8 +65,14 @@ MAX_MESSAGE_LENGTH = 4096  # Telegram's max message length
 async def ask_command(message: TelebotMessage):
     await bot.send_chat_action(message.chat.id, "typing")
     async with SessionLocal() as session:
+        config = await get_config(session, message.chat.id)
+
         messages = await get_messages(
-            session, message.chat.id, message.from_user.id, 30
+            session,
+            message.chat.id,
+            message.from_user.id,
+            config.language_model.lower(),
+            30,
         )
         config = await get_config(session, message.chat.id)
 
@@ -135,21 +141,23 @@ async def ask_command(message: TelebotMessage):
 
         await add_message(
             session,
-            dict_message.get("content"),
-            message.id,
-            message.from_user.id,
-            message.chat.id,
-            "user",
-            file_hash if not fetched else None,
+            content=dict_message.get("content"),
+            message_id=message.id,
+            author_id=message.from_user.id,
+            chat_id=message.chat.id,
+            role_id="user",
+            file_hash=file_hash if not fetched else None,
+            model=config.language_model.lower(),
         )
         await add_message(
             session,
-            response_message,
-            message.id,
-            message.from_user.id,
-            message.chat.id,
-            "assistant",
-            file_hash if not fetched else None,
+            content=response_message,
+            message_id=message.id,
+            author_id=message.from_user.id,
+            chat_id=message.chat.id,
+            role="assistant",
+            file_hash=file_hash if not fetched else None,
+            model=config.language_model.lower(),
         )
 
 
@@ -436,7 +444,6 @@ async def set_instructions(message: TelebotMessage):
         await update_config(session, message.chat.id, instruction=text)
 
     await bot.reply_to(message, "✏️ instructions updated successfully!")
-
 
 
 async def main():

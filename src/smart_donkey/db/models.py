@@ -20,7 +20,6 @@ class Base(AsyncAttrs, DeclarativeBase):
     pass
 
 
-
 class Message(Base):
     __tablename__ = "messages"
 
@@ -34,6 +33,7 @@ class Message(Base):
         ForeignKey("chats.chat_id", ondelete="CASCADE"), nullable=False
     )
     role: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str] = mapped_column(Text, nullable=False)
     file_hash: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped["TIMESTAMP"] = mapped_column(
         TIMESTAMP, server_default=func.now()

@@ -12,23 +12,8 @@ from ..db import *
 logger = getLogger(__name__)
 
 
-async def add_message(
-    session: AsyncSession,
-    content: str,
-    message_id: int,
-    author_id: int,
-    chat_id: int,
-    role: str,
-    file_hash: Optional[str] = None,
-) -> Message:
-    new_message = Message(
-        content=content,
-        author_id=author_id,
-        chat_id=chat_id,
-        file_hash=file_hash,
-        message_id=message_id,
-        role=role,
-    )
+async def add_message(session: AsyncSession, **kwargs) -> Message:
+    new_message = Message(**kwargs)
     session.add(new_message)
     await session.commit()
     await session.refresh(new_message)
@@ -68,7 +53,11 @@ async def get_message(session: AsyncSession, message_id: int) -> Optional[Messag
 
 
 async def get_messages(
-    session: AsyncSession, chat_id: int, user_id: int, limit: Optional[int] = 30
+    session: AsyncSession,
+    chat_id: int,
+    user_id: int,
+    model: str,
+    limit: Optional[int] = 30,
 ) -> List[Message]:
     result = await session.execute(
         select(Message)
