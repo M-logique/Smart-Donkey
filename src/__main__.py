@@ -331,7 +331,7 @@ async def show_provider_selector(message: TelebotMessage, user_id: int):
 async def show_language_model_selector(message: TelebotMessage, user_id):
     markup = types.InlineKeyboardMarkup(row_width=3)
     async with SessionLocal() as session:
-        config = await get_config(session, message.chat.id, message.from_user.id)
+        config = await get_config(session, message.chat.id, int(user_id))
 
         provider = config.provider
 
