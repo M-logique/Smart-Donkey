@@ -1,4 +1,4 @@
-from re import sub
+import re
 from typing import Dict, List
 
 from smart_donkey._defaults import DEFAULT_SYSTEM_MESSAGE
@@ -29,6 +29,9 @@ def extract_text(message_text: str) -> str | None:
     if not message_text:
         return None
 
-    text = sub(r"^/\S+\s*", "", message_text, count=1).strip()
+    text = re.sub(r"^/\S+\s*", "", message_text, count=1).strip()
 
     return text if text else None
+
+def no_need_to_think(text: str) -> str:
+    return  re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)

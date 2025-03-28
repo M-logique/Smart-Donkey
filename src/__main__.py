@@ -24,7 +24,7 @@ from smart_donkey.crud.messages import add_message, get_messages
 from smart_donkey.crud.users import get_user, register_user
 from smart_donkey.db import *
 from smart_donkey.db.models import ImageGeneration
-from utils import extract_text, format_messages
+from utils import extract_text, format_messages, no_need_to_think
 
 logger = logging.getLogger(__name__)
 
@@ -133,6 +133,8 @@ async def ask_command(message: TelebotMessage):
                 image=image,
             )
             response_message = response.choices[0].message.content
+            if config.language_model.lower() == "deepseek-r1":
+                response_message = no_need_to_think(response_message)
         except Exception as err:
             await bot.reply_to(message, f"❗️ There was an error: {err}")
             return
