@@ -8,6 +8,7 @@ from aiohttp import ClientSession
 from g4f import Provider
 from g4f.client import AsyncClient
 from PIL import Image
+from sqlalchemy import func, text
 from sqlalchemy.future import select
 from telebot import types
 from telebot.async_telebot import AsyncTeleBot
@@ -444,6 +445,81 @@ async def set_instructions(message: TelebotMessage):
         await update_config(session, message.chat.id, instruction=text)
 
     await bot.reply_to(message, "✏️ instructions updated successfully!")
+
+
+@bot.message_handler(commands="clear_history")
+async def clear_history_command(message: TelebotMessage):
+    async with SessionLocal() as session:
+        result = await session.execute(
+            select(func.count(Message._id)).where(
+                Message.author_id == message.from_user.id
+            )
+        )
+
+    message_count = result.scalar()
+
+    if message_count == 0:
+        await bot.reply_to(message, "You don't have any messages.")
+        return
+
+    markup = types.InlineKeyboardMarkup(row_width=2)
+
+    buttons = (
+        types.InlineKeyboardButton(
+            "✅ Yes", callback_data=f"ch_confirm_yes:{message.from_user.id}"
+        ),
+        types.InlineKeyboardButton(
+            "❌ No", callback_data=f"ch_confirm_no:{message.from_user.id}"
+        ),
+    )
+
+    markup.add(*buttons)
+    s = "" if message_count == 1 else "s"
+    await bot.reply_to(
+        message,
+        f"❓️Are you sure you want to clear {message_count} message{s}?",
+        reply_markup=markup,
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith("ch_confirm_"))
+async def clear_yes_no_handler(call: types.CallbackQuery):
+    data, user_id = call.data.split(":")
+
+    user_id = int(user_id)
+    data = data[len("ch_confirm_") :]
+
+    if user_id != call.from_user.id:
+        await bot.answer_callback_query(
+            call.id, "⛔ You are not allowed to use this!", show_alert=True
+        )
+        return
+
+    if data == "yes":
+        await bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.id,
+            text="⌛️ Started purging your history...",
+            reply_markup=None,
+        )
+        async with SessionLocal() as session:
+            await session.execute(
+                text("DELETE FROM messages WHERE author_id = :user_id"),
+                {"user_id": user_id},
+            )
+            await session.commit()
+        await bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.id,
+            text="✅ Your history has been cleaned successfully",
+        )
+    elif data == "no":
+        await bot.edit_message_text(
+            "❌ Action canceled. ",
+            reply_markup=None,
+            chat_id=message.chat.id,
+            message_id=message.id,
+        )
 
 
 async def main():
