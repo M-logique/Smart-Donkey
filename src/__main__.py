@@ -1,8 +1,11 @@
+import ast
+import asyncio
 import json
 import logging
 from asyncio import gather
 from asyncio import run as asyncio_run
 from io import BytesIO
+import os
 
 from aiohttp import ClientSession
 from g4f import Provider
@@ -535,6 +538,57 @@ async def clear_yes_no_handler(call: types.CallbackQuery):
             chat_id=call.message.chat.id,
             message_id=call.message.id,
         )
+
+def insert_returns(body):
+    # insert return stmt if the last expression is an expression statement
+    if isinstance(body[-1], ast.Expr):
+        body[-1] = ast.Return(body[-1].value)
+        ast.fix_missing_locations(body[-1])
+
+    # for if statements, we insert returns into the body and the orelse
+    if isinstance(body[-1], ast.If):
+        insert_returns(body[-1].body)
+        insert_returns(body[-1].orelse)
+
+    # for with blocks, again we insert returns into the body
+    if isinstance(body[-1], ast.With):
+        insert_returns(body[-1].body)
+
+@bot.message_handler(commands=["e", "exec"])
+@check_owner(bot)
+async def exec_command(message: TelebotMessage):
+
+    try:
+        code = extract_text(message.text)
+        fn_name = "_eval_expr"
+        cmd = "\n".join(f"    {line}" for line in code.strip("` ").splitlines())
+        body = f"async def {fn_name}():\n{cmd}"
+
+        parsed = ast.parse(body)
+        insert_returns(parsed.body[0].body)
+
+        env = {
+            "client": bot,
+            "bot": bot,
+            "message": message,
+            "imp": __import__,
+            "asyncio": asyncio,
+            "os": os,
+        }
+
+        exec(compile(parsed, filename="<ast>", mode="exec"), env)
+        result = await eval(f"{fn_name}()", env)
+    except Exception as err:
+        await bot.reply_to(message, f"Execution failed: {err}")
+        return
+
+    if result is None:
+        await bot.reply_to(message, "✅ Code executed successfully.")
+    else:
+        result_str = str(result)
+        await bot.reply_to(message, result_str[:4096]) 
+
+
 
 
 async def main():
