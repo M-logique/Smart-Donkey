@@ -1,8 +1,8 @@
 import re
 from typing import Dict, List
 
-from smart_donkey._defaults import DEFAULT_SYSTEM_MESSAGE
-from smart_donkey.db.models import Config, Message
+from gpt_assistant._defaults import DEFAULT_SYSTEM_MESSAGE
+from gpt_assistant.db.models import Config, Message
 
 
 def stringify_attributes(obj):

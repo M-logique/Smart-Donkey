@@ -18,15 +18,15 @@ from telebot.async_telebot import AsyncTeleBot
 from telebot.types import Message as TelebotMessage
 
 from error_handler import ErrorHandler
-from smart_donkey import settings
-from smart_donkey._defaults import DEFAULT_CONFIG_VALUES
-from smart_donkey.checkers import (check_config, check_owner, cooldown,
+from gpt_assistant import settings
+from gpt_assistant._defaults import DEFAULT_CONFIG_VALUES
+from gpt_assistant.checkers import (check_config, check_owner, cooldown,
                                    register_missings)
-from smart_donkey.crud.config import get_config, register_config, update_config
-from smart_donkey.crud.messages import add_message, get_messages
-from smart_donkey.crud.users import get_user, register_user
-from smart_donkey.db import *
-from smart_donkey.db.models import ImageGeneration
+from gpt_assistant.crud.config import get_config, register_config, update_config
+from gpt_assistant.crud.messages import add_message, get_messages
+from gpt_assistant.crud.users import get_user, register_user
+from gpt_assistant.db import *
+from gpt_assistant.db.models import ImageGeneration
 from utils import extract_text, format_messages, generate_config_message, no_need_to_think
 
 logger = logging.getLogger(__name__)

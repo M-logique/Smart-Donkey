@@ -4,7 +4,7 @@ from sqlalchemy import and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from smart_donkey.db.models import Config
+from gpt_assistant.db.models import Config
 
 logger = getLogger(__name__)
 

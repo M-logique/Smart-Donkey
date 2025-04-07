@@ -5,12 +5,12 @@ from logging import getLogger
 from telebot.types import CallbackQuery
 from telebot.types import Message as TelebotMessage
 
-from smart_donkey import settings
-from smart_donkey._defaults import DEFAULT_CONFIG_VALUES
-from smart_donkey.crud.chats import get_chat, register_chat
-from smart_donkey.crud.config import get_config, register_config
-from smart_donkey.crud.users import get_user, register_user
-from smart_donkey.db import SessionLocal
+from gpt_assistant import settings
+from gpt_assistant._defaults import DEFAULT_CONFIG_VALUES
+from gpt_assistant.crud.chats import get_chat, register_chat
+from gpt_assistant.crud.config import get_config, register_config
+from gpt_assistant.crud.users import get_user, register_user
+from gpt_assistant.db import SessionLocal
 
 logger = getLogger(__name__)
 

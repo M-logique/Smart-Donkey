@@ -1,5 +1,5 @@
 [project]
-name = "smart-donkey"
+name = "TG-GPT-Assistant"
 version = "0.1.0"
 description = ""
 authors = [
@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [tool.poetry]
-packages = [{include = "smart_donkey", from = "src"}]
+packages = [{include = "gpt_assistant", from = "src"}]
 
 
 [build-system]
